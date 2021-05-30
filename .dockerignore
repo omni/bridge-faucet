@@ -1,0 +1,5 @@
+db
+.env
+docker-compose.yml
+.git
+.ipynb_checkpoints

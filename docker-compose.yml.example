@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  faucet:
+    image: omnibridge/bridge-faucet:latest
+    container_name: bridge-faucet
+    environment:
+        # faucet account's private key must be here (without 0x)
+        - FAUCET_PRIVKEY=cafe...cafe
+        - JSON_DB_DIR=/db
+        - INITIAL_START_BLOCK=123
+    volumes:
+        - ./db:/db
+    restart: unless-stopped
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "100m"
+            max-file: "1"
