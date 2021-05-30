@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   faucet:
-    image: omnibridge/bridge-faucet:latest
+    image: omnibridge/faucet:latest
     container_name: bridge-faucet
     environment:
         # faucet account's private key must be here (without 0x)

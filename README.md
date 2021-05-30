@@ -24,7 +24,7 @@ This service is monitoring transfers executed through the OmniBridge on the xDai
 3. Run the service 
 
    ```bash
-   docker run -ti --rm -v $(pwd)/db:/db --env-file .env omnibridge/bridge-faucet:latest 
+   docker run -ti --rm -v $(pwd)/db:/db --env-file .env omnibridge/faucet:latest 
    ```
    
    _Note:_ the source mount point after the key `-v` is the directory created on the step 2. The destination mount point is the directory specified in the variable `JSON_DB_DIR`.
@@ -53,28 +53,18 @@ This service is monitoring transfers executed through the OmniBridge on the xDai
 
 The following environment variables may be used to configure the faucet behavior:
 
-1. `XDAI_RPC` -- JSON RPC endpoint the faucet uses to monitor OB events and get data. **Default:** `https://xdai.poanetwork.dev`.
-
-2. `BSC_OB` -- an address of BSC-xDai OB mediator on the xDai side. **Default:** `0x59447362798334d3485c64D1e4870Fde2DDC0d75`.
-
-3. `ETH_OB` -- an address of ETH-xDai OB mediator on the xDai side. **Default:** `0xf6A78083ca3e2a662D6dd1703c939c8aCE2e268d`.
-
-4. `FAUCET_PRIVKEY` -- a private key of an account holding xdai to reward. **No default value!**.
-
-5. `GAS_PRICE` -- the gas price (in gwei) the faucet uses for reward transactions. **Default:** `1`.
-
-6. `GAS_LIMIT` -- the gas limit the faucet uses for reward transactions. **Default:** `30000`.
-
-7. `REWARD` -- amount of xdai used as reward. **Default:** `0.005`.
-
-8. `POLLING_INTERVAL` -- amount of time (in seconds) between two subsequent cycles to discover OB transfers and send rewards. **Default:** `60`.
-
-9. `INITIAL_START_BLOCK` -- a block the first faucet's attempt to discover OB transfers starts from. **No default value!**.
-
-10. `FINALIZATION_INTERVAL` -- a number of blocks starting from the chain head to consider the chain as finalized. **Default:** `12`.
-
-11. `JSON_DB_DIR` -- a directory where the faucet service keeps its data. **No default value!**.
-
-12. `JSON_START_BLOCK` -- a name of JSON file where the last observed block is stored. **Default:** `faucet_start_block.json`.
-
-13. `JSON_CONTRACTS` -- a name of JSON file where addresses of recipient-contracts are stored. **Default:** `xdai-contracts.json`.
+1. `XDAI_RPC` - JSON RPC endpoint the faucet uses to monitor OB events and get data. **Default:** `https://xdai.poanetwork.dev`.
+2. `BSC_OB` - an address of BSC-xDai OB mediator on the xDai side. **Default:** `0x59447362798334d3485c64D1e4870Fde2DDC0d75`.
+3. `ETH_OB` - an address of ETH-xDai OB mediator on the xDai side. **Default:** `0xf6A78083ca3e2a662D6dd1703c939c8aCE2e268d`.
+4. `MOONS_EXT` - an address of Rinkeby-xDai ERC20-to-ERC677 mediator for MOONs tokens on the xDai side. **Default:** `0x1E0507046130c31DEb20EC2f870ad070Ff266079`.
+5. `BRICKS_EXT` - an address of Rinkeby-xDai ERC20-to-ERC677 mediator for BRICKs tokens on the xDai side. **Default:** `0xf85b17E64Bc788D0CB1A8c8C87c0d74e520c2A54`.
+6. `FAUCET_PRIVKEY` - a private key of an account holding xdai to reward. **No default value!**.
+7. `GAS_PRICE` - the gas price (in gwei) the faucet uses for reward transactions. **Default:** `1`.
+8. `GAS_LIMIT` - the gas limit the faucet uses for reward transactions. **Default:** `30000`.
+9. `REWARD` - amount of xdai used as reward. **Default:** `0.005`.
+10. `POLLING_INTERVAL` - amount of time (in seconds) between two subsequent cycles to discover OB transfers and send rewards. **Default:** `60`.
+11. `INITIAL_START_BLOCK` - a block the first faucet's attempt to discover OB transfers starts from. **No default value!**.
+12. `FINALIZATION_INTERVAL` - a number of blocks starting from the chain head to consider the chain as finalized. **Default:** `12`.
+13. `JSON_DB_DIR` - a directory where the faucet service keeps its data. **No default value!**.
+14. `JSON_START_BLOCK` - a name of JSON file where the last observed block is stored. **Default:** `faucet_start_block.json`.
+15. `JSON_CONTRACTS` - a name of JSON file where addresses of recipient-contracts are stored. **Default:** `xdai-contracts.json`.

@@ -1,5 +1,7 @@
 db
 .env
+docker-compose.yml.example
 docker-compose.yml
 .git
 .ipynb_checkpoints
+README.md

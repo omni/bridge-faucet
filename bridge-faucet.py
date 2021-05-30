@@ -20,6 +20,9 @@ while True:
     BSC_OB = getenv('BSC_OB', '0x59447362798334d3485c64D1e4870Fde2DDC0d75')
     ETH_OB = getenv('ETH_OB', '0xf6A78083ca3e2a662D6dd1703c939c8aCE2e268d')
 
+    MOONS_EXT = getenv('MOONS_EXT', '0x1E0507046130c31DEb20EC2f870ad070Ff266079')
+    BRICKS_EXT = getenv('BRICKS_EXT', '0xf85b17E64Bc788D0CB1A8c8C87c0d74e520c2A54')
+
     FAUCET_PRIVKEY = getenv('FAUCET_PRIVKEY', None)
 
     GAS_PRICE = int(getenv('GAS_PRICE', 1))
@@ -51,6 +54,8 @@ if not FAUCET_PRIVKEY:
 info(f'XDAI_RPC = {XDAI_RPC}')
 info(f'BSC_OB = {BSC_OB}')
 info(f'ETH_OB = {ETH_OB}')
+info(f'MOONS_EXT = {MOONS_EXT}')
+info(f'BRICKS_EXT = {BRICKS_EXT}')
 info(f'FAUCET_PRIVKEY = ...')
 info(f'GAS_PRICE = {GAS_PRICE}')
 info(f'GAS_LIMIT = {GAS_LIMIT}')
@@ -100,9 +105,41 @@ ABI = """
 ]
 """
 
+# TokensBridged(address recipient, uint256 value, bytes32 messageId)
+EXT_ABI = """
+[
+  {
+    "type":"event",
+    "name":"TokensBridged",
+    "inputs":[
+      {
+        "type":"address",
+        "name":"recipient",
+        "indexed":true
+      },
+      {
+        "type":"uint256",
+        "name":"value",
+        "indexed":false
+      },
+      {
+        "type":"bytes32",
+        "name":"messageId",
+        "indexed":true
+      }
+    ],
+    "anonymous":false
+  }
+]
+"""
+
 xdai_w3 = Web3(HTTPProvider(XDAI_RPC))
+
 bsc_ob = xdai_w3.eth.contract(abi = ABI, address = BSC_OB)
 eth_ob = xdai_w3.eth.contract(abi = ABI, address = ETH_OB)
+
+moons_mediator = xdai_w3.eth.contract(abi = EXT_ABI, address = MOONS_EXT)
+bricks_mediator = xdai_w3.eth.contract(abi = EXT_ABI, address = BRICKS_EXT)
 
 faucet = Account.privateKeyToAccount(FAUCET_PRIVKEY)
 
@@ -138,7 +175,7 @@ while True:
                                         'address': filter.address, 
                                         'topics': filter.topics})
     except:
-        raise BaseException('Cannot get BSC-xDAI OB OB logs')
+        raise BaseException('Cannot get BSC-xDAI OB logs')
     info(f'Found {len(bsc_logs)} TokensBridged events on BSC-xDAI OB')
 
     filter = eth_ob.events.TokensBridged.build_filter()
@@ -149,8 +186,30 @@ while True:
                                         'address': filter.address, 
                                         'topics': filter.topics})
     except:
-        raise BaseException('Cannot get ETH-xDAI OB OB logs')
+        raise BaseException('Cannot get ETH-xDAI OB logs')
     info(f'Found {len(eth_logs)} TokensBridged events on ETH-xDAI OB')
+
+    filter = moons_mediator.events.TokensBridged.build_filter()
+    info(f'Looking for TokensBridged events on MOONs extension from {start_block} to {last_block}')
+    try:
+        moons_logs = xdai_w3.eth.getLogs({'fromBlock': start_block, 
+                                          'toBlock': last_block, 
+                                          'address': filter.address, 
+                                          'topics': filter.topics})
+    except:
+        raise BaseException('Cannot get MOONs extension logs')
+    info(f'Found {len(moons_logs)} TokensBridged events on MOONs extension')
+
+    filter = bricks_mediator.events.TokensBridged.build_filter()
+    info(f'Looking for TokensBridged events on BRICKs extension from {start_block} to {last_block}')
+    try:
+        bricks_logs = xdai_w3.eth.getLogs({'fromBlock': start_block, 
+                                            'toBlock': last_block, 
+                                            'address': filter.address, 
+                                            'topics': filter.topics})
+    except:
+        raise BaseException('Cannot get BRICKs extension logs')
+    info(f'Found {len(bricks_logs)} TokensBridged events on BRICKs extension')
 
     recipients = set()
 
@@ -165,6 +224,18 @@ while True:
         recipients.add(recipient)
     info(f'Identified {len(recipients) - tmp} tokens recipients from ETH-xDAI OB events')
     
+    tmp = len(recipients)
+    for log in moons_logs:
+        recipient = moons_mediator.events.TokensBridged().processLog(log).args.recipient
+        recipients.add(recipient)
+    info(f'Identified {len(recipients) - tmp} tokens recipients from MOONs extension events')
+
+    tmp = len(recipients)
+    for log in bricks_logs:
+        recipient = bricks_mediator.events.TokensBridged().processLog(log).args.recipient
+        recipients.add(recipient)
+    info(f'Identified {len(recipients) - tmp} tokens recipients from BRICKs extension events')
+
     try:
         with open(f'{JSON_DB_DIR}/{JSON_CONTRACTS}') as f:
           contracts = load(f)
