@@ -7,6 +7,8 @@ from time import sleep
 from os import getenv
 from dotenv import load_dotenv
 from logging import basicConfig, info, INFO
+from requests import post
+from statistics import median, mean
 
 basicConfig(level=INFO)
 
@@ -26,7 +28,12 @@ while True:
 
     FAUCET_PRIVKEY = getenv('FAUCET_PRIVKEY', None)
 
-    GAS_PRICE = int(getenv('GAS_PRICE', 1))
+    GAS_PRICE = float(getenv('GAS_PRICE', -1))
+    HISTORICAL_BASE_FEE_DEPTH = int(getenv('HISTORICAL_BASE_FEE_DEPTH', 20))
+    MAX_PRIORITY_FEE = float(getenv('MAX_PRIORITY_FEE', 1))
+    MAX_FEE_RATIO = float(getenv('MAX_FEE_RATIO', 1.3))
+    FEE_LIMIT = float(getenv('FEE_LIMIT', 150))
+
     GAS_LIMIT = int(getenv('GAS_LIMIT', 30000))
     REWARD = float(getenv('REWARD', 0.005))
     POLLING_INTERVAL = getenv('POLLING_INTERVAL', 60)
@@ -38,6 +45,8 @@ while True:
     JSON_DB_DIR = getenv('JSON_DB_DIR', '.')
     JSON_START_BLOCK = getenv('JSON_START_BLOCK', 'faucet_start_block.json')
     JSON_CONTRACTS = getenv('JSON_CONTRACTS', 'xdai-contracts.json')
+
+    TEST_TO_SEND = getenv('TEST_TO_SEND', False)
     
     if not FAUCET_PRIVKEY:
         if dotenv_read:
@@ -60,6 +69,10 @@ info(f'MOONS_EXT = {MOONS_EXT}')
 info(f'BRICKS_EXT = {BRICKS_EXT}')
 info(f'FAUCET_PRIVKEY = ...')
 info(f'GAS_PRICE = {GAS_PRICE}')
+info(f'HISTORICAL_BASE_FEE_DEPTH = {HISTORICAL_BASE_FEE_DEPTH}')
+info(f'MAX_PRIORITY_FEE = {MAX_PRIORITY_FEE}')
+info(f'MAX_FEE_RATIO = {MAX_FEE_RATIO}')
+info(f'FEE_LIMIT = {FEE_LIMIT}')
 info(f'GAS_LIMIT = {GAS_LIMIT}')
 info(f'REWARD = {REWARD}')
 info(f'POLLING_INTERVAL = {POLLING_INTERVAL}')
@@ -68,6 +81,7 @@ info(f'FINALIZATION_INTERVAL = {FINALIZATION_INTERVAL}')
 info(f'JSON_DB_DIR = {JSON_DB_DIR}')
 info(f'JSON_START_BLOCK = {JSON_START_BLOCK}')
 info(f'JSON_CONTRACTS = {JSON_CONTRACTS}')
+info(f'TEST_TO_SEND = {TEST_TO_SEND}')
 
 # event
 # TokensBridged(address token, address recipient, uint256 value, bytes32 messageId)
@@ -145,6 +159,8 @@ moons_mediator = xdai_w3.eth.contract(abi = EXT_ABI, address = MOONS_EXT)
 bricks_mediator = xdai_w3.eth.contract(abi = EXT_ABI, address = BRICKS_EXT)
 
 faucet = Account.privateKeyToAccount(FAUCET_PRIVKEY)
+
+sending_tested = False
 
 try:
     with open(f'{JSON_DB_DIR}/{JSON_START_BLOCK}') as f:
@@ -264,6 +280,11 @@ while True:
         contracts = {}
 
     endowing = []
+    if TEST_TO_SEND and not sending_tested:
+        endowing.append(faucet.address)
+        info(f'activated testmode to send a transaction')
+        sending_tested = True
+
     for recipient in recipients:
         if recipient in contracts:
             continue
@@ -289,7 +310,36 @@ while True:
             raise BaseException("Cannot get faucet balance")
         info(f'faucet balance: {faucet_balance}')
 
-        if faucet_balance > len(endowing) * GAS_LIMIT * Web3.toWei(GAS_PRICE, 'gwei'):
+        if GAS_PRICE < 0:
+            try:
+                resp = post(XDAI_RPC,
+                            headers = {'Content-Type': 'application/json'},
+                            json={'method': 'eth_feeHistory',
+                                  'params': [HISTORICAL_BASE_FEE_DEPTH, "latest"],
+                                  'id':1
+                                 })
+            except:
+                raise BaseException("Cannot get historical fee data")
+
+            if resp.status_code == 200:
+                fee_hist = resp.json()['result']
+            else:
+                raise BaseException(f'Getting historical fee data did not succeed: {resp.status_code}, {resp.text}')
+            
+            base_fee_hist = list(map(lambda h: Web3.toInt(hexstr=h), fee_hist['baseFeePerGas']))
+            historical_base_fee = max(median(base_fee_hist), int(mean(base_fee_hist)))
+            info(f'Base fee based on historical data: {Web3.fromWei(historical_base_fee, "gwei")}')
+
+            recommended_priority_fee = Web3.toWei(MAX_PRIORITY_FEE, 'gwei')
+
+            max_gas_price = min(int(historical_base_fee * MAX_FEE_RATIO) + recommended_priority_fee, 
+                                Web3.toWei(FEE_LIMIT, 'gwei'))
+            info(f'Suggested max fee per gas: {Web3.fromWei(max_gas_price, "gwei")}')
+            info(f'Suggested priority fee per gas: {Web3.fromWei(recommended_priority_fee, "gwei")}')
+        else:
+            max_gas_price = Web3.toWei(GAS_PRICE, 'gwei')
+
+        if faucet_balance > len(endowing) * GAS_LIMIT * max_gas_price:
             try:
                 nonce = xdai_w3.eth.getTransactionCount(faucet.address)
             except:
@@ -299,12 +349,16 @@ while True:
                 tx = {
                     'nonce': nonce,
                     'gas': GAS_LIMIT,
-                    'gasPrice': Web3.toWei(GAS_PRICE, 'gwei'),
                     'data': b'Rewarded for OmniBridge transaction',
                     'chainId': 100,
                     'value': Web3.toWei(REWARD, 'ether'),
                     'to': recipient,
                 }
+                if GAS_PRICE < 0:
+                    tx['maxFeePerGas'] = max_gas_price
+                    tx['maxPriorityFeePerGas'] = recommended_priority_fee
+                else:
+                    tx['gasPrice'] = max_gas_price
                 rawtx = faucet.signTransaction(tx)
                 sent_tx_hash = xdai_w3.eth.sendRawTransaction(rawtx.rawTransaction)
                 info(f'{recipient} rewarded by {Web3.toHex(sent_tx_hash)}')

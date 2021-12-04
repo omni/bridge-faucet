@@ -59,12 +59,17 @@ The following environment variables may be used to configure the faucet behavior
 4. `MOONS_EXT` - an address of Rinkeby-xDai ERC20-to-ERC677 mediator for MOONs tokens on the xDai side. **Default:** `0x1E0507046130c31DEb20EC2f870ad070Ff266079`.
 5. `BRICKS_EXT` - an address of Rinkeby-xDai ERC20-to-ERC677 mediator for BRICKs tokens on the xDai side. **Default:** `0xf85b17E64Bc788D0CB1A8c8C87c0d74e520c2A54`.
 6. `FAUCET_PRIVKEY` - a private key of an account holding xdai to reward. **No default value!**.
-7. `GAS_PRICE` - the gas price (in gwei) the faucet uses for reward transactions. **Default:** `1`.
-8. `GAS_LIMIT` - the gas limit the faucet uses for reward transactions. **Default:** `30000`.
-9. `REWARD` - amount of xdai used as reward. **Default:** `0.005`.
-10. `POLLING_INTERVAL` - amount of time (in seconds) between two subsequent cycles to discover OB transfers and send rewards. **Default:** `60`.
-11. `INITIAL_START_BLOCK` - a block the first faucet's attempt to discover OB transfers starts from. **No default value!**.
-12. `FINALIZATION_INTERVAL` - a number of blocks starting from the chain head to consider the chain as finalized. **Default:** `12`.
-13. `JSON_DB_DIR` - a directory where the faucet service keeps its data. **No default value!**.
-14. `JSON_START_BLOCK` - a name of JSON file where the last observed block is stored. **Default:** `faucet_start_block.json`.
-15. `JSON_CONTRACTS` - a name of JSON file where addresses of recipient-contracts are stored. **Default:** `xdai-contracts.json`.
+7. `GAS_PRICE` - the gas price (in gwei) the faucet uses for reward transactions (pre-EIP1559 transactions). `-1` means to use EIP1559 transactions. **Default:** `-1`.
+8. `HISTORICAL_BASE_FEE_DEPTH` - number of recent blocks to estimate the base fee as per gas (EIP1559 related). **Default:** `20`.
+9. `MAX_PRIORITY_FEE` - the priority fee per gas (in gwei) used by the faucet (EIP1559 related). **Default:** `1`.
+10. `MAX_FEE_RATIO` - a coefficient to adjust the base fee per gas acquired from the historical data (EIP1559 related). **Default:** `1.3`.
+11. `FEE_LIMIT` - the higher bound of max fee per gas (in gwei) which is used in order to avoid expensive transactions (EIP1559 related). **Default:** `150`.
+12. `GAS_LIMIT` - the gas limit the faucet uses for reward transactions. **Default:** `30000`.
+13. `REWARD` - amount of xdai used as reward. **Default:** `0.005`.
+14. `POLLING_INTERVAL` - amount of time (in seconds) between two subsequent cycles to discover OB transfers and send rewards. **Default:** `60`.
+15. `INITIAL_START_BLOCK` - a block the first faucet's attempt to discover OB transfers starts from. **No default value!**.
+16. `FINALIZATION_INTERVAL` - a number of blocks starting from the chain head to consider the chain as finalized. **Default:** `12`.
+17. `JSON_DB_DIR` - a directory where the faucet service keeps its data. **No default value!**.
+18. `JSON_START_BLOCK` - a name of JSON file where the last observed block is stored. **Default:** `faucet_start_block.json`.
+19. `JSON_CONTRACTS` - a name of JSON file where addresses of recipient-contracts are stored. **Default:** `xdai-contracts.json`.
+20. `TEST_TO_SEND` - make a transaction to itself just after running the service. **Default:** `false`.
